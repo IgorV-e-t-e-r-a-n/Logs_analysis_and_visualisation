@@ -1,10 +1,10 @@
 import pandas as pd  # filters data
-import matplotlib.pyplot as plt
 import plotly.express as px
 import plotly.graph_objects as go
 import tkinter as tk
-from tkinter import filedialog
+from tkinter import filedialog #for GUI option when choosing log file for parsing
 from sklearn.cluster import KMeans
+import re
 
 # Function to choose a file path
 def choose_file_path():
@@ -21,17 +21,26 @@ def choose_file_path():
 
 # Function to parse logs from file
 def parse_logs(file_path):
+    log_pattern = re.compile(
+        r'(?P<timestamp>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) '  # Timestamp
+        r'(?P<source>\S+) '                                    # Source (non-whitespace string)
+        r'(?P<message>.+)'                                     # Message (remaining line)
+    )
+                
+                
     logs = []
-    with open(file_path, 'r') as file:
-        for line in file:
-            parts = line.strip().split(" ")
-            log_entry ={ 
-                "timestamp": parts[0] + " " + parts[1],
-                "source": parts[2],
-                "message": " ".join(parts[3:])
-            }
-            logs.append(log_entry)
-    return pd.DataFrame(logs)
+    with open(file_path, 'r') as file:           
+        for line in file:     
+            match = log_pattern.match(line)
+            if match:
+                log_entry = match.groupdict()
+                logs.append(log_entry)
+                
+    df = pd.DataFrame(logs)
+    # Convert timestamp to datetime
+    df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
+    return df
+
 
 # Event correlation function
 def correlate_events(df):
@@ -62,7 +71,7 @@ def detect_anomalies(df):
 
 # Visualisation of logs over timea
 def plot_log_analysis(df):
-    time_series = df.resample("H").size()
+    time_series = df.resample("h").size()
 
     # Plotly line chart for log events over time
     fig_line = go.Figure()
